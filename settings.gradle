@@ -1,0 +1,4 @@
+include ':tapsell-sdk-android'
+include ':admediator'
+include ':sample'
+rootProject.name = "TestTapsell"
