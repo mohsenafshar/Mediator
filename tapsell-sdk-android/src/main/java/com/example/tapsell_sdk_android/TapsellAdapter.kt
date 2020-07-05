@@ -10,7 +10,7 @@ import java.util.concurrent.atomic.AtomicBoolean
 class TapsellAdapter private constructor(): AdAdapter {
 
     val isInitialized: AtomicBoolean = AtomicBoolean(false)
-    private var mAdId : String? = null
+    private val adsMap = HashMap<String, String>()
 
     companion object {
         private var adapter: TapsellAdapter? = null
@@ -38,7 +38,7 @@ class TapsellAdapter private constructor(): AdAdapter {
             TapsellAdRequestOptions(),
             object : TapsellAdRequestListener() {
                 override fun onAdAvailable(adId: String) {
-                    mAdId = adId
+                    adsMap.put(zoneId, adId)
                     adRequestHandlerCallback.onHandled(getAdNetworkType())
                 }
 
@@ -52,11 +52,12 @@ class TapsellAdapter private constructor(): AdAdapter {
     private fun showTapsellAd(
         activity: Activity,
         zoneId: String,
+        adId: String,
         showAdCallback: ShowAdCallback
     ) {
         Tapsell.showAd(activity,
             zoneId,
-            mAdId,
+            adId,
             TapsellShowOptions(),
             object : TapsellAdShowListener() {
                 override fun onOpened() {
@@ -72,7 +73,7 @@ class TapsellAdapter private constructor(): AdAdapter {
                 }
 
                 override fun onError(message: String) {
-                    showAdCallback.onError()
+                    showAdCallback.onError(message)
                     //error
                     log("error")
                 }
@@ -105,7 +106,12 @@ class TapsellAdapter private constructor(): AdAdapter {
     }
 
     override fun showAd(activity: Activity, zoneId: String, showAdCallback: ShowAdCallback) {
-        showTapsellAd(activity, zoneId, showAdCallback)
+        val adId = adsMap[zoneId]
+        if (adId == null) {
+            showAdCallback.onError("Couldn't find ad")
+            return
+        }
+        showTapsellAd(activity, zoneId, adId, showAdCallback)
     }
 
     override fun getAdNetworkType(): AdNetworkType {

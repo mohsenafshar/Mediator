@@ -2,7 +2,6 @@ package com.example.admediator
 
 import android.app.Activity
 import android.util.Log
-import com.example.admediator.data.LocalRepository.Companion.TAPSELL_ZONE_ID_INTERSTITIAL_VIDEO
 import com.example.admediator.di.myKodein
 import com.example.admediator.model.Waterfall
 import org.kodein.di.Kodein
@@ -48,8 +47,10 @@ object AdMediator : KodeinAware {
         }
     }
 
-    @Synchronized
     internal fun requestAd(activity: Activity, mediatorZoneId: String, requestAdCallback: RequestAdCallback) {
+
+//        Thread.sleep(10000)
+
         val mediationGroup = mediationGroupManager.getMediationGroup(mediatorZoneId)
         if (mediationGroup == null) {
             requestAdCallback.onError("Could not find Mediation group")
@@ -59,7 +60,7 @@ object AdMediator : KodeinAware {
         AdRequestHandler(activity, mediationGroup, object : InternalAdRequestHandlerCallback {
             override fun onHandled(waterfall: Waterfall) {
                 waterfallMap[mediatorZoneId] = waterfall
-                requestAdCallback.onAddAvailable(waterfall.adNetwork.name)
+                requestAdCallback.onAddAvailable(waterfall.adNetwork.name + " " + mediatorZoneId)
             }
 
             override fun onError(message: String?) {
@@ -70,12 +71,20 @@ object AdMediator : KodeinAware {
     }
 
     internal fun showAd(activity: Activity, mediatorZoneId: String, showAdCallback: ShowAdCallback) {
-        if (isShowingAd.compareAndSet(false, true).not()) {
-            Log.d("MEDIATOR", "Ad is showing")
+        val waterfall: Waterfall? = getWaterfallForShowableAd(mediatorZoneId)
+        if (waterfall == null) {
+            Log.d("MEDIATOR", "There is not any provided ad for this zone id: $mediatorZoneId")
+            showAdCallback.onError("There is not any provided ad for this zone id: $mediatorZoneId")
             return
         }
-        val waterfall: Waterfall? = getWaterfallForShowableAd(mediatorZoneId)
-        AdapterInitializer.hashMapAdapter[waterfall?.adNetwork]?.showAd(activity, waterfall?.zoneId!!, object : ShowAdCallback {
+
+        if (isShowingAd.compareAndSet(false, true).not()) {
+            Log.d("MEDIATOR", "Ad is showing, id: $mediatorZoneId")
+            showAdCallback.onError("Ad is showing, id: $mediatorZoneId")
+            return
+        }
+
+        AdapterInitializer.hashMapAdapter[waterfall.adNetwork]?.showAd(activity, waterfall.zoneId, object : ShowAdCallback {
             override fun onOpened() {
                 showAdCallback.onOpened()
             }
@@ -91,9 +100,9 @@ object AdMediator : KodeinAware {
                 showAdCallback.onRewarded()
             }
 
-            override fun onError() {
+            override fun onError(message: String?) {
                 isShowingAd.set(false)
-                showAdCallback.onError()
+                showAdCallback.onError(message)
             }
 
         })

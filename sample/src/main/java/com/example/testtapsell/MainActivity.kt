@@ -3,9 +3,12 @@ package com.example.testtapsell
 import android.os.Bundle
 import android.os.Handler
 import android.util.Log
+import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
-import com.example.admediator.*
-import com.example.tapsell_sdk_android.AdapterTest
+import com.example.admediator.AdProvider
+import com.example.admediator.RequestAdCallback
+import com.example.admediator.ShowAdCallback
+import kotlinx.android.synthetic.main.activity_main.*
 
 
 class MainActivity : AppCompatActivity() {
@@ -20,16 +23,21 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
+        tv.setOnClickListener {
+            Toast.makeText(this, "Clicked", Toast.LENGTH_SHORT).show()
+        }
+
         AdProvider.initialize(this@MainActivity, MEDIATOR_APP_ID)
         Handler().postDelayed({
             requestAd(MEDIATOR_ZONE_ID_1)
             requestAd(MEDIATOR_ZONE_ID_2)
-        }, 2000)
+        }, 2)
     }
 
     private fun requestAd(mediatorZoneId: String) {
         AdProvider.requestAd(this@MainActivity, mediatorZoneId, object : RequestAdCallback {
             override fun onAddAvailable(adNetworkName: String) {
+                log("Ad Provided from " + adNetworkName)
                 showAd(mediatorZoneId)
             }
 
@@ -53,8 +61,8 @@ class MainActivity : AppCompatActivity() {
                 log("onRewarded")
             }
 
-            override fun onError() {
-                log("onError")
+            override fun onError(message: String?) {
+                log("onError " + message)
             }
 
         })

@@ -21,7 +21,7 @@ interface ShowAdCallback {
     fun onOpened()
     fun onClosed()
     fun onRewarded()
-    fun onError()
+    fun onError(message: String?)
 }
 
 class InnerCallback {

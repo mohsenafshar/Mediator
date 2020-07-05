@@ -2,7 +2,6 @@ package com.example.admediator.data
 
 import com.example.admediator.AdNetworkType
 import com.example.admediator.AdType
-import com.example.admediator.data.LocalRepository.Companion.TAPSELL_ZONE_ID_INTERSTITIAL_VIDEO
 import com.example.admediator.model.AdNetworks
 import com.example.admediator.model.AppSetting
 import com.example.admediator.model.MediationGroup
@@ -11,6 +10,13 @@ import java.lang.Exception
 
 
 class NetworkRepository : IRepository {
+
+    companion object {
+        const val TAPSELL_ZONE_ID_INTERSTITIAL_VIDEO_1 = "5f0035e510484a00016c0b1b"
+        const val TAPSELL_ZONE_ID_INTERSTITIAL_VIDEO_2 = "5efea7b789103a0001614dd6"
+    }
+
+
     override fun getAppSetting(appId: String): AppSetting {
         // todo : send request to our server and fetch AppSetting
         return AppSetting(
@@ -24,12 +30,15 @@ class NetworkRepository : IRepository {
 
     override fun getMediationGroup(mediatorZoneId: String): MediationGroup? {
         // todo : send request to our server and fetch MediationGroup
+
+        val zoneId = if (mediatorZoneId.contains('2')) TAPSELL_ZONE_ID_INTERSTITIAL_VIDEO_2 else TAPSELL_ZONE_ID_INTERSTITIAL_VIDEO_1
+
         return MediationGroup(
             zoneType = AdType.Interstitial,
             waterfalls = listOf(
                 Waterfall(
                     AdNetworkType.Tapsell,
-                    TAPSELL_ZONE_ID_INTERSTITIAL_VIDEO,
+                    zoneId,
                     2000
                 )
             ),
