@@ -2,20 +2,15 @@ package com.example.tapsell_sdk_android
 
 import android.app.Activity
 import android.util.Log
-import com.example.admediator.AdAdapter
-import com.example.admediator.AdMediator
-import com.example.admediator.RequestAdCallback
-import com.example.admediator.ShowAdCallback
+import com.example.admediator.*
 import ir.tapsell.sdk.*
-import ir.tapsell.sdk.TapsellAdActivity.AD_ID
-import ir.tapsell.sdk.TapsellAdActivity.ZONE_ID
 import java.util.concurrent.atomic.AtomicBoolean
 
 
-class TapsellAdapter : AdAdapter {
+class TapsellAdapter private constructor(): AdAdapter {
 
     val isInitialized: AtomicBoolean = AtomicBoolean(false)
-//    lateinit var activity: Activity
+    private var mAdId : String? = null
 
     companion object {
         private var adapter: TapsellAdapter? = null
@@ -29,25 +24,26 @@ class TapsellAdapter : AdAdapter {
         }
 
         fun register() {
-            AdMediator.register(get())
+            AdapterInitializer.register(get())
         }
     }
 
     private fun requestTapsellInterstitialAd(
         activity: Activity,
         zoneId: String,
-        requestAdCallback: RequestAdCallback
+        adRequestHandlerCallback: AdRequestHandlerCallback
     ) {
         Tapsell.requestAd(activity,
-            ZONE_ID,
+            zoneId,
             TapsellAdRequestOptions(),
             object : TapsellAdRequestListener() {
                 override fun onAdAvailable(adId: String) {
-                    requestAdCallback.onAddAvailable(adId)
+                    mAdId = adId
+                    adRequestHandlerCallback.onHandled(getAdNetworkType())
                 }
 
                 override fun onError(message: String) {
-                    requestAdCallback.onError(message)
+                    adRequestHandlerCallback.onError(message)
                     log(message)
                 }
             })
@@ -56,12 +52,11 @@ class TapsellAdapter : AdAdapter {
     private fun showTapsellAd(
         activity: Activity,
         zoneId: String,
-        adId: String,
         showAdCallback: ShowAdCallback
     ) {
         Tapsell.showAd(activity,
             zoneId,
-            adId,
+            mAdId,
             TapsellShowOptions(),
             object : TapsellAdShowListener() {
                 override fun onOpened() {
@@ -96,7 +91,7 @@ class TapsellAdapter : AdAdapter {
     override fun requestRewardedAd(
         activity: Activity,
         zoneId: String,
-        requestAdCallback: RequestAdCallback
+        adRequestHandlerCallback: AdRequestHandlerCallback
     ) {
         TODO("Not yet implemented")
     }
@@ -104,13 +99,17 @@ class TapsellAdapter : AdAdapter {
     override fun requestInterstitialAd(
         activity: Activity,
         zoneId: String,
-        requestAdCallback: RequestAdCallback
+        adRequestHandlerCallback: AdRequestHandlerCallback
     ) {
-        requestTapsellInterstitialAd(activity, zoneId, requestAdCallback)
+        requestTapsellInterstitialAd(activity, zoneId, adRequestHandlerCallback)
     }
 
-    override fun showAd(activity: Activity, zoneId: String,adId: String, showAdCallback: ShowAdCallback) {
-        showTapsellAd(activity, zoneId, adId, showAdCallback)
+    override fun showAd(activity: Activity, zoneId: String, showAdCallback: ShowAdCallback) {
+        showTapsellAd(activity, zoneId, showAdCallback)
+    }
+
+    override fun getAdNetworkType(): AdNetworkType {
+        return AdNetworkType.Tapsell
     }
 
     private fun log(message: String?) {

@@ -2,107 +2,107 @@ package com.example.admediator
 
 import android.app.Activity
 import android.util.Log
-import com.example.admediator.model.MediationGroup
+import com.example.admediator.data.LocalRepository.Companion.TAPSELL_ZONE_ID_INTERSTITIAL_VIDEO
+import com.example.admediator.di.myKodein
 import com.example.admediator.model.Waterfall
-import kotlin.reflect.KClass
-import kotlin.reflect.full.companionObject
-import kotlin.reflect.full.companionObjectInstance
+import org.kodein.di.Kodein
+import org.kodein.di.KodeinAware
+import org.kodein.di.generic.instance
+import java.util.concurrent.atomic.AtomicBoolean
+import kotlin.collections.HashMap
 
-object AdMediator {
-    const val TAPSELL_ZONE_ID_INTERSTITIAL_VIDEO = "5efea7b789103a0001614dd6"
+object AdMediator : KodeinAware {
 
-    private val listAdapter = mutableListOf<AdAdapter>()
-
-    fun register(adAdapter: AdAdapter) {
-        listAdapter.add(adAdapter)
-    }
-
-    private fun getAdapters() {
-        val list = listOf("com.example.tapsell_sdk_android.TapsellAdapter")
-        for (className in list) {
-            getAdapter(className)
-        }
-    }
-
-    private fun getAdapter(className: String) {
-        val kclass: KClass<*> = Class.forName(className).kotlin
-        val companionKclass = kclass.companionObject
-        val companionInstance = kclass.companionObjectInstance
-        val getMethod = companionKclass?.java?.getMethod("register")
-        getMethod?.invoke(companionInstance)
-    }
+    val waterfallMap: HashMap<String, Waterfall> = HashMap()
+    private val mListAdapter: MutableList<AdAdapter> = mutableListOf()
+    private val mediationGroupManager: MediationGroupManager by instance()
+    private val appSettingManager: AppSettingManager by instance()
+    private val isShowingAd = AtomicBoolean(false)
 
     internal fun initialize(activity: Activity, appId: String) {
-        getAdapters()
+        val appSetting = appSettingManager.getAppSetting(appId)
 
-        for (adAdapter in listAdapter) {
-            adAdapter.initialize(activity, appId)
-        }
-    }
+        AdapterInitializer.getAdapters()
+        mListAdapter.addAll(AdapterInitializer.hashMapAdapter.values)
 
-    private fun getMediationGroup(zoneId: String): MediationGroup {
-        return MediationGroup(
-            zoneType = AdType.Interstitial.name,
-            waterfalls = listOf(
-                Waterfall(
-                    AdNetworkType.Tapsell.name,
-                    TAPSELL_ZONE_ID_INTERSTITIAL_VIDEO,
-                    2000
-                )
-            ),
-            ttl = 360000
-        )
-    }
-
-    internal fun requestAd(activity: Activity, zoneId: String, requestAdCallback: RequestAdCallback) {
-        // get waterfall
-        val mediationGrouping = getMediationGroup(zoneId)
-//        for (waterfall in mediationGrouping.waterfalls) {
-//            when(waterfall.adNetwork) {
-//                AdNetworkType.Tapsell.name -> {
-//
-//                }
-//            }
-//        }
-
-        when(mediationGrouping.zoneType) {
-            AdType.Interstitial.name -> {
-                for ((index, adAdapter) in listAdapter.withIndex()) {
-                    synchronized(AdMediator) {
-                        adAdapter.requestInterstitialAd(activity, mediationGrouping.waterfalls[index].zoneId, requestAdCallback)
+        for (adAdapter in mListAdapter) {
+            when (adAdapter.getAdNetworkType()) {
+                AdNetworkType.Tapsell -> {
+                    appSetting.adNetworks.Tapsell?.let {
+                        adAdapter.initialize(activity, it)
                     }
                 }
-            }
 
-            AdType.Rewarded.name -> {
-                for ((index, adAdapter) in listAdapter.withIndex()) {
-                    synchronized(AdMediator) {
-                        adAdapter.requestRewardedAd(activity, mediationGrouping.waterfalls[index].zoneId, requestAdCallback)
+                AdNetworkType.Chartboost -> {
+                    appSetting.adNetworks.Chartboost?.let {
+                        adAdapter.initialize(activity, it)
+                    }
+                }
+
+                AdNetworkType.UnityAds -> {
+                    appSetting.adNetworks.UnityAds?.let {
+                        adAdapter.initialize(activity, it)
                     }
                 }
             }
         }
     }
 
-    private fun requestRewardedAd(activity: Activity, zoneId: String, requestAdCallback: RequestAdCallback) {
-
-    }
-
-    private fun requestInterstitialAd(activity: Activity, zoneId: String, requestAdCallback: RequestAdCallback) {
-
-    }
-
-    internal fun showAd(activity: Activity, zoneId: String,adId: String, showAdCallback: ShowAdCallback) {
-        for (adAdapter in listAdapter) {
-            adAdapter.showAd(activity, zoneId, adId, showAdCallback)
+    @Synchronized
+    internal fun requestAd(activity: Activity, mediatorZoneId: String, requestAdCallback: RequestAdCallback) {
+        val mediationGroup = mediationGroupManager.getMediationGroup(mediatorZoneId)
+        if (mediationGroup == null) {
+            requestAdCallback.onError("Could not find Mediation group")
+            return
         }
+
+        AdRequestHandler(activity, mediationGroup, object : InternalAdRequestHandlerCallback {
+            override fun onHandled(waterfall: Waterfall) {
+                waterfallMap[mediatorZoneId] = waterfall
+                requestAdCallback.onAddAvailable(waterfall.adNetwork.name)
+            }
+
+            override fun onError(message: String?) {
+                requestAdCallback.onError(message)
+            }
+
+        }).handle()
     }
 
-    private fun getNextAdAdapter() {
-        return
+    internal fun showAd(activity: Activity, mediatorZoneId: String, showAdCallback: ShowAdCallback) {
+        if (isShowingAd.compareAndSet(false, true).not()) {
+            Log.d("MEDIATOR", "Ad is showing")
+            return
+        }
+        val waterfall: Waterfall? = getWaterfallForShowableAd(mediatorZoneId)
+        AdapterInitializer.hashMapAdapter[waterfall?.adNetwork]?.showAd(activity, waterfall?.zoneId!!, object : ShowAdCallback {
+            override fun onOpened() {
+                showAdCallback.onOpened()
+            }
+
+            override fun onClosed() {
+                // when ad showed, remove it from hashmap
+                AdapterInitializer.hashMapAdapter.remove(waterfall.adNetwork)
+                isShowingAd.set(false)
+                showAdCallback.onClosed()
+            }
+
+            override fun onRewarded() {
+                showAdCallback.onRewarded()
+            }
+
+            override fun onError() {
+                isShowingAd.set(false)
+                showAdCallback.onError()
+            }
+
+        })
     }
 
-    private fun log(message: String?) {
-        Log.d("TAPSEL_LOG", message.toString())
+    private fun getWaterfallForShowableAd(mediatorZoneId: String): Waterfall? {
+        return waterfallMap[mediatorZoneId]
     }
+
+    override val kodein: Kodein
+        get() = myKodein
 }
