@@ -5,7 +5,7 @@ import com.example.admediator.model.AppSetting
 
 class AppSettingManager(private val repositoryImpl: RepositoryImpl) {
 
-    fun getAppSetting(appId: String) : AppSetting {
+    fun getAppSetting(appId: String) : AppSetting? {
         return repositoryImpl.getAppSetting(appId)
     }
 

@@ -17,9 +17,14 @@ object AdMediator : KodeinAware {
     private val mediationGroupManager: MediationGroupManager by instance()
     private val appSettingManager: AppSettingManager by instance()
     private val isShowingAd = AtomicBoolean(false)
+    private val isAppInitialized = AtomicBoolean(false)
 
+    @Synchronized
     internal fun initialize(activity: Activity, appId: String) {
+        if (isAppInitialized.get()) return
+
         val appSetting = appSettingManager.getAppSetting(appId)
+        if (appSetting == null) return
 
         AdapterInitializer.getAdapters()
         mListAdapter.addAll(AdapterInitializer.hashMapAdapter.values)
@@ -45,10 +50,13 @@ object AdMediator : KodeinAware {
                 }
             }
         }
+        isAppInitialized.set(true)
     }
 
     internal fun requestAd(activity: Activity, mediatorZoneId: String, requestAdCallback: RequestAdCallback) {
-
+        if (isAppInitialized.get().not()) {
+            requestAdCallback.onError("Mediator is not initialized")
+        }
 //        Thread.sleep(10000)
 
         val mediationGroup = mediationGroupManager.getMediationGroup(mediatorZoneId)
