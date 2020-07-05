@@ -9,7 +9,9 @@ object AdProvider {
     private val threadExecutor: ExecutorService = Executors.newSingleThreadExecutor()
 
     fun initialize(activity: Activity, appId: String) {
-        AdMediator.initialize(activity, appId)
+        threadExecutor.execute {
+            AdMediator.initialize(activity, appId)
+        }
     }
 
     fun requestAd(

@@ -8,7 +8,7 @@ interface InternalAdRequestHandlerCallback {
 }
 
 interface AdRequestHandlerCallback {
-    fun onHandled(adNetworkType: AdNetworkType)
+    fun onHandled(adNetworkType: AdNetworkType, zoneId: String)
     fun onError(message: String?)
 }
 

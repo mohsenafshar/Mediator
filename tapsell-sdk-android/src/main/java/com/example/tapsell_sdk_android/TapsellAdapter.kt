@@ -4,6 +4,7 @@ import android.app.Activity
 import android.util.Log
 import com.example.admediator.*
 import ir.tapsell.sdk.*
+import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicBoolean
 
 
@@ -39,7 +40,10 @@ class TapsellAdapter private constructor(): AdAdapter {
             object : TapsellAdRequestListener() {
                 override fun onAdAvailable(adId: String) {
                     adsMap.put(zoneId, adId)
-                    adRequestHandlerCallback.onHandled(getAdNetworkType())
+                    Executors.newSingleThreadExecutor().submit {
+                        Thread.sleep(1500)
+                        adRequestHandlerCallback.onHandled(getAdNetworkType(), zoneId)
+                    }
                 }
 
                 override fun onError(message: String) {

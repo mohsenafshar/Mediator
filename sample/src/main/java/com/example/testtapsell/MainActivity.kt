@@ -30,7 +30,7 @@ class MainActivity : AppCompatActivity() {
         AdProvider.initialize(this@MainActivity, MEDIATOR_APP_ID)
         Handler().postDelayed({
             requestAd(MEDIATOR_ZONE_ID_1)
-            requestAd(MEDIATOR_ZONE_ID_2)
+//            requestAd(MEDIATOR_ZONE_ID_2)
         }, 2)
     }
 

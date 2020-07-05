@@ -38,7 +38,12 @@ class NetworkRepository : IRepository {
             waterfalls = listOf(
                 Waterfall(
                     AdNetworkType.Tapsell,
-                    zoneId,
+                    TAPSELL_ZONE_ID_INTERSTITIAL_VIDEO_1,
+                    1000
+                ),
+                Waterfall(
+                    AdNetworkType.Tapsell,
+                    TAPSELL_ZONE_ID_INTERSTITIAL_VIDEO_2,
                     2000
                 )
             ),
